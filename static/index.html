@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VerifVendor — Autonomous Vendor Onboarding & Compliance Engine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+              900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes pulseSlow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.75; transform: scale(0.99); }
+    }
+    .anim-running {
+      animation: pulseSlow 1.4s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col font-sans">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-50 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-bold text-xl text-white shadow">
+          🛡️
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="font-extrabold text-lg tracking-tight text-white">VerifVendor</h1>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 font-semibold border border-sky-500/30">AI Operations</span>
+          </div>
+          <p class="text-xs text-slate-400">Autonomous Vendor Onboarding & Fraud Verification System</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex space-x-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700">
+        <button id="navBtnRunner" onclick="switchView('runner')" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all bg-sky-600 text-white shadow-sm flex items-center space-x-2">
+          <span>⚡ Live Verification</span>
+        </button>
+        <button id="navBtnDashboard" onclick="switchView('dashboard')" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-700/50 flex items-center space-x-2">
+          <span>📊 Audit Dashboard</span>
+          <span id="badgeTotalRuns" class="ml-1 px-1.5 py-0.2 bg-slate-700 text-slate-300 text-xs rounded-full">...</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Quick Scenario Presets Banner -->
+  <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border-b border-slate-800 py-3 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+      <div class="flex items-center space-x-2 text-xs text-slate-300 font-semibold uppercase tracking-wider">
+        <span class="text-sky-400 font-bold">1-Click Test Scenarios:</span>
+      </div>
+      <div class="flex flex-wrap gap-2 text-xs" id="presetsContainer">
+        <!-- Injected via JavaScript -->
+        <span class="text-slate-400 text-xs italic">Loading test presets...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+    <!-- ============================================================ -->
+    <!-- VIEW 1: LIVE RUNNER                                          -->
+    <!-- ============================================================ -->
+    <div id="viewRunner" class="space-y-6">
+
+      <!-- Scenario Brief Card -->
+      <div id="scenarioBanner" class="hidden bg-sky-50 border border-sky-200 rounded-xl p-4 transition-all">
+        <div class="flex items-start justify-between">
+          <div class="flex space-x-3">
+            <span class="text-2xl" id="scenarioIcon">💡</span>
+            <div>
+              <h3 id="scenarioTitle" class="font-bold text-slate-900 text-sm"></h3>
+              <p id="scenarioDesc" class="text-xs text-slate-600 mt-0.5 leading-relaxed"></p>
+            </div>
+          </div>
+          <div class="text-right flex flex-col items-end">
+            <span class="text-[10px] uppercase font-bold text-slate-500">Expected Outcome</span>
+            <span id="scenarioExpected" class="mt-0.5 text-xs font-bold px-2.5 py-0.5 rounded-full border"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Split Layout: Form & Live Execution Visualizer -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- Left Form: Vendor Submission Input (5 Columns) -->
+        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
+          <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Vendor Submission Payload</h2>
+              <p class="text-xs text-slate-500">Provide real details or load one of the presets above</p>
+            </div>
+            <button type="button" onclick="resetFormToClean()" class="text-xs text-slate-400 hover:text-slate-600">Clear</button>
+          </div>
+
+          <form id="vendorForm" onsubmit="handleVerificationSubmit(event)" class="space-y-4">
+
+            <!-- Section 1: Company Profile -->
+            <div class="space-y-3 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-500 block">1. Company Profile</span>
+              <div class="grid grid-cols-1 gap-2.5">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Legal Company Name *</label>
+                  <input type="text" id="legal_name" required placeholder="e.g. Apex Cloud Technologies Inc." class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Trade Name / DBA</label>
+                    <input type="text" id="dba_name" placeholder="Optional DBA" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Country *</label>
+                    <select id="country" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none bg-white">
+                      <option value="US">US — United States</option>
+                      <option value="DE">DE — Germany</option>
+                      <option value="GB">GB — United Kingdom</option>
+                      <option value="FR">FR — France</option>
+                      <option value="CA">CA — Canada</option>
+                      <option value="AU">AU — Australia</option>
+                      <option value="SC">SC — Seychelles (Offshore)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Incorporation Date</label>
+                    <input type="date" id="incorporation_date" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Contact Email *</label>
+                    <input type="email" id="contact_email" required placeholder="finance@vendor.com" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2: Tax Registration -->
+            <div class="space-y-3 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-500 block">2. Tax Registration</span>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Tax ID / EIN / VAT *</label>
+                  <input type="text" id="tax_id" required placeholder="e.g. 84-2918471" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none font-mono">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Tax Country</label>
+                  <input type="text" id="tax_country" placeholder="US" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none uppercase font-mono">
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 3: Banking Information -->
+            <div class="space-y-3 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-500 block">3. Banking & Settlement</span>
+              <div class="grid grid-cols-1 gap-2">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Bank Name *</label>
+                  <input type="text" id="bank_name" required placeholder="JPMorgan Chase, Deutsche Bank..." class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Account Holder Beneficiary Name *</label>
+                  <input type="text" id="account_holder_name" required placeholder="Name on bank statement" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Account No. / IBAN *</label>
+                    <input type="text" id="account_number_or_iban" required placeholder="Account or IBAN" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none font-mono">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">SWIFT / BIC</label>
+                    <input type="text" id="swift_bic" placeholder="CHASUS33" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none font-mono uppercase">
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Bank Country *</label>
+                    <input type="text" id="bank_country" placeholder="US, DE, SC..." class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none uppercase font-mono">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Currency</label>
+                    <select id="currency" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none bg-white">
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                      <option value="GBP">GBP (£)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 4: Attached Compliance Documents -->
+            <div class="space-y-2 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100 text-xs">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-500 block">4. Attached Compliance Files</span>
+              <div class="space-y-1.5 pt-1">
+                <label class="flex items-center space-x-2.5 cursor-pointer">
+                  <input type="checkbox" id="doc_cert_inc" checked class="w-4 h-4 text-sky-600 rounded border-slate-300">
+                  <span class="text-slate-700 font-medium">Certificate of Incorporation / Business License</span>
+                </label>
+                <label class="flex items-center space-x-2.5 cursor-pointer">
+                  <input type="checkbox" id="doc_tax" checked class="w-4 h-4 text-sky-600 rounded border-slate-300">
+                  <span class="text-slate-700 font-medium">Tax Registration / Form W-9 / W-8BEN-E</span>
+                </label>
+                <label class="flex items-center space-x-2.5 cursor-pointer">
+                  <input type="checkbox" id="doc_bank_proof" checked class="w-4 h-4 text-sky-600 rounded border-slate-300">
+                  <span class="text-slate-700 font-medium">Bank Confirmation Letter or Voided Check</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" id="btnSubmitVerify" class="w-full py-3 px-4 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2">
+              <span id="btnIcon">⚡</span>
+              <span id="btnText">Execute Automated Verification</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Right Side: Live Execution & Decision Stage Visualizer (7 Columns) -->
+        <div class="lg:col-span-7 space-y-5">
+
+          <!-- 5-Stage Live Pipeline Tracker -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 class="text-base font-bold text-slate-900">Verification Pipeline Stages</h3>
+                <p class="text-xs text-slate-500">Autonomous multi-stage validation executing in real time</p>
+              </div>
+              <span id="pipelineTotalTime" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">0 ms</span>
+            </div>
+
+            <div class="space-y-3" id="stageList">
+
+              <!-- Stage 1 -->
+              <div id="stageCard_stage_1_intake" class="border border-slate-200 rounded-xl p-3.5 flex items-start justify-between bg-slate-50 transition-all">
+                <div class="flex items-start space-x-3">
+                  <div class="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-lg border border-slate-200">
+                    📋
+                  </div>
+                  <div>
+                    <h4 class="text-xs font-bold text-slate-800">1. Intake & Document Completeness</h4>
+                    <p id="stageDetail_stage_1_intake" class="text-xs text-slate-500 mt-0.5">Awaiting submission...</p>
+                  </div>
+                </div>
+                <span id="stageBadge_stage_1_intake" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-600">IDLE</span>
+              </div>
+
+              <!-- Stage 2 -->
+              <div id="stageCard_stage_2_tax" class="border border-slate-200 rounded-xl p-3.5 flex items-start justify-between bg-slate-50 transition-all">
+                <div class="flex items-start space-x-3">
+                  <div class="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-lg border border-slate-200">
+                    🏛️
+                  </div>
+                  <div>
+                    <h4 class="text-xs font-bold text-slate-800">2. Tax Registration & Jurisdictional Syntax</h4>
+                    <p id="stageDetail_stage_2_tax" class="text-xs text-slate-500 mt-0.5">Awaiting submission...</p>
+                  </div>
+                </div>
+                <span id="stageBadge_stage_2_tax" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-600">IDLE</span>
+              </div>
+
+              <!-- Stage 3 -->
+              <div id="stageCard_stage_3_bank" class="border border-slate-200 rounded-xl p-3.5 flex items-start justify-between bg-slate-50 transition-all">
+                <div class="flex items-start space-x-3">
+                  <div class="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-lg border border-slate-200">
+                    🏦
+                  </div>
+                  <div>
+                    <h4 class="text-xs font-bold text-slate-800">3. Bank Account Cross-Reference & Entity Match</h4>
+                    <p id="stageDetail_stage_3_bank" class="text-xs text-slate-500 mt-0.5">Awaiting submission...</p>
+                  </div>
+                </div>
+                <span id="stageBadge_stage_3_bank" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-600">IDLE</span>
+              </div>
+
+              <!-- Stage 4 -->
+              <div id="stageCard_stage_4_fraud" class="border border-slate-200 rounded-xl p-3.5 flex items-start justify-between bg-slate-50 transition-all">
+                <div class="flex items-start space-x-3">
+                  <div class="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-lg border border-slate-200">
+                    🛡️
+                  </div>
+                  <div>
+                    <h4 class="text-xs font-bold text-slate-800">4. Risk, AML & Fraud Screening</h4>
+                    <p id="stageDetail_stage_4_fraud" class="text-xs text-slate-500 mt-0.5">Awaiting submission...</p>
+                  </div>
+                </div>
+                <span id="stageBadge_stage_4_fraud" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-600">IDLE</span>
+              </div>
+
+              <!-- Stage 5 -->
+              <div id="stageCard_stage_5_decision" class="border border-slate-200 rounded-xl p-3.5 flex items-start justify-between bg-slate-50 transition-all">
+                <div class="flex items-start space-x-3">
+                  <div class="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-lg border border-slate-200">
+                    ⚖️
+                  </div>
+                  <div>
+                    <h4 class="text-xs font-bold text-slate-800">5. Autonomous Decision & Action Plan</h4>
+                    <p id="stageDetail_stage_5_decision" class="text-xs text-slate-500 mt-0.5">Awaiting submission...</p>
+                  </div>
+                </div>
+                <span id="stageBadge_stage_5_decision" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-600">IDLE</span>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Final Decision Card (Revealed upon completion) -->
+          <div id="decisionCard" class="hidden bg-white rounded-2xl border shadow-sm p-6 space-y-5 transition-all">
+            
+            <!-- Header Banner -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
+              <div class="flex items-center space-x-3">
+                <div id="decisionIconBox" class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-bold text-white shadow">
+                  ✓
+                </div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span id="decisionStatusBadge" class="text-sm font-extrabold uppercase px-3 py-1 rounded-full"></span>
+                    <span id="decisionRiskBadge" class="text-xs font-semibold px-2 py-0.5 rounded-full"></span>
+                  </div>
+                  <h4 id="decisionSummary" class="text-xs font-medium text-slate-700 mt-1"></h4>
+                </div>
+              </div>
+              <div class="text-right sm:border-l sm:border-slate-100 sm:pl-4">
+                <span class="text-[10px] uppercase font-bold text-slate-400 block">Risk Score</span>
+                <span id="decisionRiskScore" class="text-2xl font-black text-slate-900">0/100</span>
+              </div>
+            </div>
+
+            <!-- Discrepancies & Findings -->
+            <div id="discrepanciesSection" class="space-y-2">
+              <h5 class="text-xs font-bold uppercase tracking-wider text-slate-600">Identified Findings & Required Actions</h5>
+              <div id="discrepanciesList" class="space-y-2 text-xs">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+
+            <!-- Dynamic Tabs: Vendor Email vs Internal AP Audit Note -->
+            <div class="space-y-3 pt-2">
+              <div class="flex border-b border-slate-200 text-xs">
+                <button type="button" id="tabEmailBtn" onclick="toggleOutputTab('email')" class="px-3.5 py-2 font-bold border-b-2 border-sky-600 text-sky-700">
+                  ✉️ Generated Vendor Communication Email
+                </button>
+                <button type="button" id="tabMemoBtn" onclick="toggleOutputTab('memo')" class="px-3.5 py-2 font-medium text-slate-500 hover:text-slate-800">
+                  📋 Internal SOX-404 Audit Memo
+                </button>
+              </div>
+
+              <!-- Vendor Email Container -->
+              <div id="tabEmailContent" class="space-y-2">
+                <div class="relative">
+                  <pre id="vendorEmailText" class="w-full text-xs bg-slate-900 text-slate-100 p-4 rounded-xl overflow-x-auto whitespace-pre-wrap font-sans leading-relaxed border border-slate-800 max-h-72"></pre>
+                  <button type="button" onclick="copyText('vendorEmailText')" class="absolute top-2 right-2 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded text-[11px] font-medium border border-slate-700">
+                    Copy Email
+                  </button>
+                </div>
+              </div>
+
+              <!-- AP Memo Container -->
+              <div id="tabMemoContent" class="space-y-2 hidden">
+                <div class="relative">
+                  <pre id="auditMemoText" class="w-full text-[11px] bg-slate-900 text-emerald-400 p-4 rounded-xl overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed border border-slate-800 max-h-72"></pre>
+                  <button type="button" onclick="copyText('auditMemoText')" class="absolute top-2 right-2 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded text-[11px] font-medium border border-slate-700">
+                    Copy Memo
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- VIEW 2: AUDIT RUNS DASHBOARD                                 -->
+    <!-- ============================================================ -->
+    <div id="viewDashboard" class="hidden space-y-6">
+
+      <!-- KPI Summary Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Runs</span>
+          <div class="text-2xl font-black text-slate-900 mt-1" id="kpiTotal">0</div>
+          <span class="text-[10px] text-slate-500">All submissions</span>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Approved</span>
+          <div class="text-2xl font-black text-emerald-600 mt-1" id="kpiApproved">0</div>
+          <span class="text-[10px] text-emerald-600 font-semibold" id="kpiApprovalRate">0% approval rate</span>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-amber-600">Pending Action</span>
+          <div class="text-2xl font-black text-amber-600 mt-1" id="kpiPending">0</div>
+          <span class="text-[10px] text-slate-500">Requires follow-up</span>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-rose-600">Rejected / Fraud</span>
+          <div class="text-2xl font-black text-rose-600 mt-1" id="kpiRejected">0</div>
+          <span class="text-[10px] text-rose-600 font-semibold">Payment risk stopped</span>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-600">Avg Risk Score</span>
+          <div class="text-2xl font-black text-indigo-600 mt-1" id="kpiAvgRisk">0.0</div>
+          <span class="text-[10px] text-slate-500">Out of 100</span>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Avg Latency</span>
+          <div class="text-2xl font-black text-slate-900 mt-1" id="kpiAvgLatency">0 ms</div>
+          <span class="text-[10px] text-slate-500">Sub-second execution</span>
+        </div>
+
+      </div>
+
+      <!-- Historical Runs Table Card -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Historical Vendor Onboarding Audit Trail</h3>
+            <p class="text-xs text-slate-500">Full immutable ledger stored in SQLite for compliance audit and ERP sync</p>
+          </div>
+          <div class="flex items-center space-x-2 w-full sm:w-auto">
+            <select id="filterStatus" onchange="loadRunsTable()" class="text-xs px-3 py-2 border border-slate-200 rounded-lg bg-white">
+              <option value="ALL">All Statuses</option>
+              <option value="APPROVED">Approved Only</option>
+              <option value="PENDING_VENDOR_ACTION">Pending Action Only</option>
+              <option value="REJECTED">Rejected Only</option>
+            </select>
+            <a href="/api/export" download="vendor_onboarding_audit.csv" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-all flex items-center space-x-1">
+              <span>📥 Export CSV</span>
+            </a>
+            <button onclick="loadDashboardData()" class="px-3 py-2 bg-sky-50 text-sky-700 hover:bg-sky-100 text-xs font-semibold rounded-lg transition-all">
+              ↻ Refresh
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-600">
+            <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-100">
+              <tr>
+                <th class="py-3 px-4">Timestamp</th>
+                <th class="py-3 px-4">Vendor Legal Name</th>
+                <th class="py-3 px-4">Country & Tax ID</th>
+                <th class="py-3 px-4">Risk Profile</th>
+                <th class="py-3 px-4">Decision Status</th>
+                <th class="py-3 px-4">Summary</th>
+                <th class="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="runsTableBody" class="divide-y divide-slate-100 font-medium">
+              <tr>
+                <td colspan="7" class="text-center py-8 text-slate-400">Loading audit history...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Slide-Over Drawer for Run Inspection -->
+  <div id="inspectModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex justify-end">
+    <div class="w-full max-w-2xl bg-white h-full shadow-2xl p-6 overflow-y-auto space-y-6">
+      <div class="flex items-center justify-between border-b pb-4">
+        <div>
+          <span class="text-xs uppercase font-bold text-slate-400" id="inspectRunId">RUN DETAILS</span>
+          <h3 class="text-lg font-extrabold text-slate-900" id="inspectVendorName"></h3>
+        </div>
+        <button onclick="closeInspectModal()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+      </div>
+
+      <!-- Quick Status Strip -->
+      <div class="flex items-center space-x-3 p-3 rounded-xl bg-slate-50 border">
+        <span id="inspectStatusBadge" class="text-xs font-extrabold px-3 py-1 rounded-full"></span>
+        <span id="inspectRiskBadge" class="text-xs font-semibold px-2 py-0.5 rounded-full"></span>
+        <span class="text-xs text-slate-500 font-mono" id="inspectDuration"></span>
+      </div>
+
+      <!-- Stages List -->
+      <div class="space-y-2">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700">Stage-by-Stage Verification</h4>
+        <div id="inspectStagesList" class="space-y-2 text-xs"></div>
+      </div>
+
+      <!-- Discrepancies -->
+      <div class="space-y-2">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700">Identified Discrepancies</h4>
+        <div id="inspectDiscrepanciesList" class="space-y-2 text-xs"></div>
+      </div>
+
+      <!-- Memo -->
+      <div class="space-y-2">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700">Procurement Audit Memo</h4>
+        <pre id="inspectAuditMemo" class="text-[11px] p-3 rounded-lg bg-slate-900 text-emerald-400 font-mono whitespace-pre-wrap max-h-56 overflow-y-auto"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Application Logic -->
+  <script>
+    let globalPresets = [];
+    let currentActivePresetId = null;
+
+    // View Navigation
+    function switchView(viewName) {
+      const runner = document.getElementById('viewRunner');
+      const dash = document.getElementById('viewDashboard');
+      const btnR = document.getElementById('navBtnRunner');
+      const btnD = document.getElementById('navBtnDashboard');
+
+      if (viewName === 'runner') {
+        runner.classList.remove('hidden');
+        dash.classList.add('hidden');
+        btnR.className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition-all bg-sky-600 text-white shadow-sm flex items-center space-x-2';
+        btnD.className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-700/50 flex items-center space-x-2';
+      } else {
+        runner.classList.add('hidden');
+        dash.classList.remove('hidden');
+        btnD.className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition-all bg-sky-600 text-white shadow-sm flex items-center space-x-2';
+        btnR.className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-700/50 flex items-center space-x-2';
+        loadDashboardData();
+      }
+    }
+
+    // Load Presets from Backend API
+    async function initPresets() {
+      try {
+        const resp = await fetch('/api/presets');
+        const data = await resp.json();
+        globalPresets = data.presets || [];
+
+        const container = document.getElementById('presetsContainer');
+        container.innerHTML = '';
+
+        globalPresets.forEach((p, idx) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-medium transition-all flex items-center space-x-1.5 hover:border-sky-500';
+          btn.innerHTML = `<span>${p.title.split(':')[0]}</span>`;
+          btn.title = p.subtitle;
+          btn.onclick = () => selectPreset(p.id);
+          container.appendChild(btn);
+        });
+
+        // Automatically load the happy path on start
+        if (globalPresets.length > 0) {
+          selectPreset(globalPresets[0].id);
+        }
+
+        // Update badge total
+        refreshStatsBadge();
+      } catch (err) {
+        console.error('Failed to load presets:', err);
+      }
+    }
+
+    function selectPreset(presetId) {
+      currentActivePresetId = presetId;
+      const preset = globalPresets.find(p => p.id === presetId);
+      if (!preset) return;
+
+      const p = preset.payload;
+      const ci = p.company_info || {};
+      const ti = p.tax_info || {};
+      const bi = p.banking_info || {};
+      const doc = p.documents || {};
+
+      document.getElementById('legal_name').value = ci.legal_name || '';
+      document.getElementById('dba_name').value = ci.dba_name || '';
+      document.getElementById('country').value = ci.country || 'US';
+      document.getElementById('incorporation_date').value = ci.incorporation_date || '';
+      document.getElementById('contact_email').value = ci.contact_email || '';
+
+      document.getElementById('tax_id').value = ti.tax_id || '';
+      document.getElementById('tax_country').value = ti.tax_country || ci.country || 'US';
+
+      document.getElementById('bank_name').value = bi.bank_name || '';
+      document.getElementById('account_holder_name').value = bi.account_holder_name || '';
+      document.getElementById('account_number_or_iban').value = bi.iban || bi.account_number || '';
+      document.getElementById('swift_bic').value = bi.swift_bic || '';
+      document.getElementById('bank_country').value = bi.bank_country || ci.country || 'US';
+      document.getElementById('currency').value = bi.currency || 'USD';
+
+      document.getElementById('doc_cert_inc').checked = !!doc.certificate_of_incorporation;
+      document.getElementById('doc_tax').checked = !!doc.tax_document;
+      document.getElementById('doc_bank_proof').checked = !!doc.bank_statement_or_voided_check;
+
+      // Update Scenario Banner
+      const banner = document.getElementById('scenarioBanner');
+      banner.classList.remove('hidden');
+      document.getElementById('scenarioTitle').textContent = preset.title;
+      document.getElementById('scenarioDesc').textContent = preset.description;
+      
+      const expBadge = document.getElementById('scenarioExpected');
+      expBadge.textContent = preset.expected_status;
+      if (preset.expected_status === 'APPROVED') {
+        expBadge.className = 'mt-0.5 text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border-emerald-300';
+      } else if (preset.expected_status === 'PENDING_VENDOR_ACTION') {
+        expBadge.className = 'mt-0.5 text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border-amber-300';
+      } else {
+        expBadge.className = 'mt-0.5 text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border-rose-300';
+      }
+
+      // Reset stage visualizer
+      resetStageVisualizer();
+      document.getElementById('decisionCard').classList.add('hidden');
+    }
+
+    function resetFormToClean() {
+      document.getElementById('vendorForm').reset();
+      document.getElementById('scenarioBanner').classList.add('hidden');
+      resetStageVisualizer();
+      document.getElementById('decisionCard').classList.add('hidden');
+    }
+
+    function resetStageVisualizer() {
+      const stageIds = ['stage_1_intake', 'stage_2_tax', 'stage_3_bank', 'stage_4_fraud', 'stage_5_decision'];
+      stageIds.forEach(id => {
+        const card = document.getElementById(`stageCard_${id}`);
+        const badge = document.getElementById(`stageBadge_${id}`);
+        const detail = document.getElementById(`stageDetail_${id}`);
+
+        card.className = 'border border-slate-200 rounded-xl p-3.5 flex items-start justify-between bg-slate-50 transition-all';
+        badge.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-600';
+        badge.textContent = 'IDLE';
+        detail.textContent = 'Awaiting execution...';
+      });
+      document.getElementById('pipelineTotalTime').textContent = '0 ms';
+    }
+
+    // Live Streaming Verification Submission via SSE
+    async function handleVerificationSubmit(e) {
+      e.preventDefault();
+
+      const btn = document.getElementById('btnSubmitVerify');
+      const btnIcon = document.getElementById('btnIcon');
+      const btnText = document.getElementById('btnText');
+      btn.disabled = true;
+      btnIcon.textContent = '⏳';
+      btnText.textContent = 'Executing Pipeline...';
+
+      resetStageVisualizer();
+      document.getElementById('decisionCard').classList.add('hidden');
+
+      const payload = {
+        company_info: {
+          legal_name: document.getElementById('legal_name').value.trim(),
+          dba_name: document.getElementById('dba_name').value.trim(),
+          country: document.getElementById('country').value.trim().toUpperCase(),
+          incorporation_date: document.getElementById('incorporation_date').value.trim(),
+          contact_email: document.getElementById('contact_email').value.trim(),
+        },
+        tax_info: {
+          tax_id: document.getElementById('tax_id').value.trim(),
+          tax_country: document.getElementById('tax_country').value.trim().toUpperCase() || document.getElementById('country').value.trim().toUpperCase(),
+        },
+        banking_info: {
+          bank_name: document.getElementById('bank_name').value.trim(),
+          account_holder_name: document.getElementById('account_holder_name').value.trim(),
+          account_number: document.getElementById('account_number_or_iban').value.trim(),
+          iban: document.getElementById('account_number_or_iban').value.trim().replace(/\s/g, ''),
+          swift_bic: document.getElementById('swift_bic').value.trim(),
+          bank_country: document.getElementById('bank_country').value.trim().toUpperCase() || document.getElementById('country').value.trim().toUpperCase(),
+          currency: document.getElementById('currency').value,
+        },
+        documents: {
+          certificate_of_incorporation: document.getElementById('doc_cert_inc').checked,
+          tax_document: document.getElementById('doc_tax').checked,
+          bank_statement_or_voided_check: document.getElementById('doc_bank_proof').checked,
+        }
+      };
+
+      try {
+        const response = await fetch('/api/verify/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop(); // Keep remaining incomplete chunk
+
+          for (const chunk of lines) {
+            if (!chunk.trim()) continue;
+            const eventMatch = chunk.match(/^event:\s*(\w+)/m);
+            const dataMatch = chunk.match(/^data:\s*(.+)/m);
+
+            if (eventMatch && dataMatch) {
+              const eventName = eventMatch[1];
+              const eventData = JSON.parse(dataMatch[1]);
+              handleStreamEvent(eventName, eventData);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Verification error:', err);
+        alert('Verification process error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btnIcon.textContent = '⚡';
+        btnText.textContent = 'Execute Automated Verification';
+        refreshStatsBadge();
+      }
+    }
+
+    function handleStreamEvent(event, data) {
+      if (event === 'stage_progress') {
+        const card = document.getElementById(`stageCard_${data.stage_id}`);
+        const badge = document.getElementById(`stageBadge_${data.stage_id}`);
+        const detail = document.getElementById(`stageDetail_${data.stage_id}`);
+
+        card.className = 'border-2 border-sky-400 rounded-xl p-3.5 flex items-start justify-between bg-sky-50/70 anim-running transition-all shadow-sm';
+        badge.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-sky-500 text-white animate-pulse';
+        badge.textContent = 'RUNNING';
+        detail.textContent = data.message;
+
+      } else if (event === 'stage_completed') {
+        const card = document.getElementById(`stageCard_${data.stage_id}`);
+        const badge = document.getElementById(`stageBadge_${data.stage_id}`);
+        const detail = document.getElementById(`stageDetail_${data.stage_id}`);
+
+        card.classList.remove('anim-running');
+
+        if (data.state === 'PASSED') {
+          card.className = 'border border-emerald-300 rounded-xl p-3.5 flex items-start justify-between bg-emerald-50/50 transition-all';
+          badge.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300';
+          badge.textContent = `PASSED (${data.duration_ms}ms)`;
+        } else if (data.state === 'WARNING') {
+          card.className = 'border border-amber-300 rounded-xl p-3.5 flex items-start justify-between bg-amber-50/50 transition-all';
+          badge.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300';
+          badge.textContent = `WARNING (${data.duration_ms}ms)`;
+        } else {
+          card.className = 'border border-rose-300 rounded-xl p-3.5 flex items-start justify-between bg-rose-50/50 transition-all';
+          badge.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300';
+          badge.textContent = `FAILED (${data.duration_ms}ms)`;
+        }
+
+        detail.textContent = data.details || 'Step completed.';
+
+      } else if (event === 'pipeline_complete') {
+        renderDecisionCard(data);
+      }
+    }
+
+    function renderDecisionCard(data) {
+      const card = document.getElementById('decisionCard');
+      card.classList.remove('hidden');
+
+      const iconBox = document.getElementById('decisionIconBox');
+      const statusBadge = document.getElementById('decisionStatusBadge');
+      const riskBadge = document.getElementById('decisionRiskBadge');
+      const summary = document.getElementById('decisionSummary');
+      const riskScore = document.getElementById('decisionRiskScore');
+      const totalTime = document.getElementById('pipelineTotalTime');
+
+      totalTime.textContent = `${data.total_duration_ms} ms total`;
+      riskScore.textContent = `${data.risk_score}/100`;
+      summary.textContent = data.summary;
+
+      // Risk score styling
+      if (data.status === 'APPROVED') {
+        card.className = 'bg-emerald-50/60 rounded-2xl border-2 border-emerald-300 shadow-md p-6 space-y-5 transition-all';
+        iconBox.className = 'w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-bold text-white bg-emerald-600 shadow';
+        iconBox.textContent = '✓';
+        statusBadge.className = 'text-xs font-black uppercase px-3 py-1 rounded-full bg-emerald-600 text-white';
+        statusBadge.textContent = 'APPROVED';
+        riskBadge.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+        riskBadge.textContent = `${data.risk_tier} RISK`;
+      } else if (data.status === 'PENDING_VENDOR_ACTION') {
+        card.className = 'bg-amber-50/60 rounded-2xl border-2 border-amber-300 shadow-md p-6 space-y-5 transition-all';
+        iconBox.className = 'w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-bold text-white bg-amber-500 shadow';
+        iconBox.textContent = '⏳';
+        statusBadge.className = 'text-xs font-black uppercase px-3 py-1 rounded-full bg-amber-500 text-white';
+        statusBadge.textContent = 'PENDING VENDOR ACTION';
+        riskBadge.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800';
+        riskBadge.textContent = `${data.risk_tier} RISK`;
+      } else {
+        card.className = 'bg-rose-50/60 rounded-2xl border-2 border-rose-300 shadow-md p-6 space-y-5 transition-all';
+        iconBox.className = 'w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-bold text-white bg-rose-600 shadow';
+        iconBox.textContent = '✗';
+        statusBadge.className = 'text-xs font-black uppercase px-3 py-1 rounded-full bg-rose-600 text-white';
+        statusBadge.textContent = 'REJECTED';
+        riskBadge.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800';
+        riskBadge.textContent = `${data.risk_tier} RISK`;
+      }
+
+      // Render Discrepancies
+      const dList = document.getElementById('discrepanciesList');
+      dList.innerHTML = '';
+      if (!data.discrepancies || data.discrepancies.length === 0) {
+        dList.innerHTML = `
+          <div class="p-3 rounded-lg bg-emerald-100/70 border border-emerald-200 text-emerald-800 flex items-center space-x-2">
+            <span>✨</span>
+            <span>Zero compliance discrepancies found. Vendor verified against all statutory criteria.</span>
+          </div>`;
+      } else {
+        data.discrepancies.forEach(d => {
+          const div = document.createElement('div');
+          const isCrit = d.severity === 'CRITICAL';
+          const isHigh = d.severity === 'HIGH';
+          const borderCls = isCrit ? 'border-rose-300 bg-rose-100/80 text-rose-900' : (isHigh ? 'border-amber-300 bg-amber-100/80 text-amber-900' : 'border-slate-200 bg-white text-slate-800');
+          div.className = `p-3 rounded-xl border ${borderCls} space-y-1`;
+          div.innerHTML = `
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-[11px] uppercase tracking-wider">${d.stage}</span>
+              <span class="text-[10px] font-black px-2 py-0.2 rounded-full ${isCrit ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white'}">${d.severity}</span>
+            </div>
+            <p class="font-medium text-xs">${d.issue}</p>
+            <p class="text-[11px] opacity-80"><strong>Action Required:</strong> ${d.remediation}</p>
+          `;
+          dList.appendChild(div);
+        });
+      }
+
+      // Set Email & Memo Text
+      document.getElementById('vendorEmailText').textContent = data.vendor_email || 'No email required: Vendor is APPROVED for ERP activation.';
+      document.getElementById('auditMemoText').textContent = data.audit_note || 'Audit memo generated.';
+
+      // Smooth scroll to decision
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function toggleOutputTab(tab) {
+      const emailBtn = document.getElementById('tabEmailBtn');
+      const memoBtn = document.getElementById('tabMemoBtn');
+      const emailContent = document.getElementById('tabEmailContent');
+      const memoContent = document.getElementById('tabMemoContent');
+
+      if (tab === 'email') {
+        emailBtn.className = 'px-3.5 py-2 font-bold border-b-2 border-sky-600 text-sky-700';
+        memoBtn.className = 'px-3.5 py-2 font-medium text-slate-500 hover:text-slate-800';
+        emailContent.classList.remove('hidden');
+        memoContent.classList.add('hidden');
+      } else {
+        memoBtn.className = 'px-3.5 py-2 font-bold border-b-2 border-sky-600 text-sky-700';
+        emailBtn.className = 'px-3.5 py-2 font-medium text-slate-500 hover:text-slate-800';
+        memoContent.classList.remove('hidden');
+        emailContent.classList.add('hidden');
+      }
+    }
+
+    function copyText(elementId) {
+      const text = document.getElementById(elementId).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Copied to clipboard!');
+      });
+    }
+
+    // Dashboard Data & KPIs
+    async function loadDashboardData() {
+      try {
+        const statsResp = await fetch('/api/stats');
+        const stats = await statsResp.json();
+
+        document.getElementById('kpiTotal').textContent = stats.total_submissions || 0;
+        document.getElementById('kpiApproved').textContent = stats.approved_count || 0;
+        document.getElementById('kpiApprovalRate').textContent = `${stats.approval_rate || 0}% approval rate`;
+        document.getElementById('kpiPending').textContent = stats.pending_count || 0;
+        document.getElementById('kpiRejected').textContent = stats.rejected_count || 0;
+        document.getElementById('kpiAvgRisk').textContent = stats.avg_risk_score || '0.0';
+        document.getElementById('kpiAvgLatency').textContent = `${stats.avg_latency_ms || 0} ms`;
+
+        loadRunsTable();
+      } catch (err) {
+        console.error('Failed to load dashboard:', err);
+      }
+    }
+
+    async function loadRunsTable() {
+      try {
+        const filterStatus = document.getElementById('filterStatus').value;
+        const resp = await fetch('/api/runs?limit=100');
+        const data = await resp.json();
+        let runs = data.runs || [];
+
+        if (filterStatus !== 'ALL') {
+          runs = runs.filter(r => r.status === filterStatus);
+        }
+
+        const tbody = document.getElementById('runsTableBody');
+        tbody.innerHTML = '';
+
+        if (runs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">No runs match criteria.</td></tr>';
+          return;
+        }
+
+        runs.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-50 transition-colors';
+
+          let statusBadgeCls = '';
+          if (r.status === 'APPROVED') statusBadgeCls = 'bg-emerald-100 text-emerald-800';
+          else if (r.status === 'PENDING_VENDOR_ACTION') statusBadgeCls = 'bg-amber-100 text-amber-800';
+          else statusBadgeCls = 'bg-rose-100 text-rose-800';
+
+          const timeStr = r.created_at ? new Date(r.created_at).toLocaleTimeString() + ' ' + new Date(r.created_at).toLocaleDateString() : 'N/A';
+
+          tr.innerHTML = `
+            <td class="py-3 px-4 text-slate-400 font-mono text-[11px] whitespace-nowrap">${timeStr}</td>
+            <td class="py-3 px-4 font-bold text-slate-900">${r.vendor_name}</td>
+            <td class="py-3 px-4 font-mono text-slate-500">${r.country} · ${r.tax_id || 'N/A'}</td>
+            <td class="py-3 px-4">
+              <span class="font-bold">${r.risk_score}/100</span>
+              <span class="text-[10px] text-slate-400">(${r.risk_tier})</span>
+            </td>
+            <td class="py-3 px-4">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${statusBadgeCls}">${r.status}</span>
+            </td>
+            <td class="py-3 px-4 max-w-xs truncate text-slate-500 text-xs" title="${r.summary}">${r.summary}</td>
+            <td class="py-3 px-4 text-right">
+              <button onclick="inspectRun('${r.id}')" class="px-2.5 py-1 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all">
+                Inspect ↗
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error('Failed to load runs table:', err);
+      }
+    }
+
+    async function inspectRun(runId) {
+      try {
+        const resp = await fetch(`/api/runs/${runId}`);
+        const run = await resp.json();
+
+        document.getElementById('inspectRunId').textContent = run.id;
+        document.getElementById('inspectVendorName').textContent = run.vendor_name;
+        document.getElementById('inspectDuration').textContent = `${run.total_duration_ms} ms execution`;
+
+        const badge = document.getElementById('inspectStatusBadge');
+        badge.textContent = run.status;
+        if (run.status === 'APPROVED') badge.className = 'text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-600 text-white';
+        else if (run.status === 'PENDING_VENDOR_ACTION') badge.className = 'text-xs font-extrabold px-3 py-1 rounded-full bg-amber-500 text-white';
+        else badge.className = 'text-xs font-extrabold px-3 py-1 rounded-full bg-rose-600 text-white';
+
+        document.getElementById('inspectRiskBadge').textContent = `Risk: ${run.risk_score}/100 (${run.risk_tier})`;
+
+        // Stages
+        const stList = document.getElementById('inspectStagesList');
+        stList.innerHTML = '';
+        (run.stages || []).forEach(s => {
+          const div = document.createElement('div');
+          div.className = 'p-2.5 rounded-lg border bg-slate-50 flex items-center justify-between text-xs';
+          div.innerHTML = `
+            <div>
+              <span class="font-bold">${s.name}</span>
+              <p class="text-[11px] text-slate-500">${s.details}</p>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200">${s.status}</span>
+          `;
+          stList.appendChild(div);
+        });
+
+        // Discrepancies
+        const dList = document.getElementById('inspectDiscrepanciesList');
+        dList.innerHTML = '';
+        if (!run.discrepancies || run.discrepancies.length === 0) {
+          dList.innerHTML = '<p class="text-xs text-emerald-700 bg-emerald-50 p-2 rounded">No compliance discrepancies.</p>';
+        } else {
+          run.discrepancies.forEach(d => {
+            const div = document.createElement('div');
+            div.className = 'p-2.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-xs';
+            div.innerHTML = `<strong>[${d.severity}] ${d.stage}:</strong> ${d.issue}<br><span class="text-[11px] text-amber-700">Action: ${d.remediation}</span>`;
+            dList.appendChild(div);
+          });
+        }
+
+        document.getElementById('inspectAuditMemo').textContent = run.audit_note || 'N/A';
+
+        document.getElementById('inspectModal').classList.remove('hidden');
+      } catch (err) {
+        console.error('Inspect run error:', err);
+      }
+    }
+
+    function closeInspectModal() {
+      document.getElementById('inspectModal').classList.add('hidden');
+    }
+
+    async function refreshStatsBadge() {
+      try {
+        const resp = await fetch('/api/stats');
+        const stats = await resp.json();
+        document.getElementById('badgeTotalRuns').textContent = stats.total_submissions || 0;
+      } catch {}
+    }
+
+    // Startup
+    window.addEventListener('DOMContentLoaded', () => {
+      initPresets();
+    });
+  </script>
+</body>
+</html>

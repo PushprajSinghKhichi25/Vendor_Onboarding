@@ -1,0 +1,194 @@
+{
+  "presets": [
+    {
+      "id": "happy_path",
+      "title": "🟢 Happy Path: Compliant Enterprise Vendor",
+      "subtitle": "Apex Cloud Technologies Inc. (US) — Perfect match, valid EIN, clean banking & sanctions",
+      "expected_status": "APPROVED",
+      "expected_risk": "Low (0-20)",
+      "description": "Standard corporate vendor registration with active IRS EIN, matching JPMorgan Chase commercial account, full compliance documentation, and clear OFAC screening.",
+      "payload": {
+        "company_info": {
+          "legal_name": "Apex Cloud Technologies Inc.",
+          "dba_name": "Apex Cloud",
+          "country": "US",
+          "incorporation_date": "2021-06-15",
+          "contact_name": "Sarah Jenkins",
+          "contact_email": "s.jenkins@apexcloud.com",
+          "address": "400 Montgomery St, Suite 800, San Francisco, CA 94104"
+        },
+        "tax_info": {
+          "tax_id": "84-2918471",
+          "tax_country": "US",
+          "tax_exempt": false
+        },
+        "banking_info": {
+          "bank_name": "JPMorgan Chase Bank, N.A.",
+          "account_holder_name": "Apex Cloud Technologies Inc.",
+          "account_number": "9021849102",
+          "iban": "",
+          "swift_bic": "CHASUS33",
+          "bank_country": "US",
+          "currency": "USD"
+        },
+        "documents": {
+          "certificate_of_incorporation": true,
+          "tax_document": true,
+          "bank_statement_or_voided_check": true
+        }
+      }
+    },
+    {
+      "id": "edge_case_1_dba_mismatch",
+      "title": "🟡 Edge Case 1: Operating Subsidiary / DBA Mismatch",
+      "subtitle": "Nordic Industrial Solutions GmbH — Bank account under 'Nordic Logistics Services Ltd'",
+      "expected_status": "PENDING_VENDOR_ACTION",
+      "expected_risk": "Medium (25-45)",
+      "description": "The registered legal entity name does not strictly match the bank account beneficiary name. Rather than hard-rejecting, the system requests formal DBA certification or parent linking resolution.",
+      "payload": {
+        "company_info": {
+          "legal_name": "Nordic Industrial Solutions GmbH",
+          "dba_name": "",
+          "country": "DE",
+          "incorporation_date": "2019-04-10",
+          "contact_name": "Markus Lindner",
+          "contact_email": "m.lindner@nordic-industrial.de",
+          "address": "Königsallee 45, 40212 Düsseldorf, Germany"
+        },
+        "tax_info": {
+          "tax_id": "DE812345678",
+          "tax_country": "DE",
+          "tax_exempt": false
+        },
+        "banking_info": {
+          "bank_name": "Deutsche Bank AG",
+          "account_holder_name": "Nordic Logistics Services Ltd",
+          "account_number": "DE22500700100123456789",
+          "iban": "DE22500700100123456789",
+          "swift_bic": "DEUTDEDD",
+          "bank_country": "DE",
+          "currency": "EUR"
+        },
+        "documents": {
+          "certificate_of_incorporation": true,
+          "tax_document": true,
+          "bank_statement_or_voided_check": true
+        }
+      }
+    },
+    {
+      "id": "edge_case_2_offshore_shell",
+      "title": "🔴 Edge Case 2: Offshore Secrecy & Shell Velocity",
+      "subtitle": "Vanguard Global Advisory Ltd — UK entity routing to Seychelles (SC) bank + Age < 30 days",
+      "expected_status": "REJECTED",
+      "expected_risk": "Critical (75-95)",
+      "description": "Cross-border capital flight indicator: company claims UK incorporation, but treasury account is located in an offshore financial secrecy jurisdiction with severe name mutation and shell age velocity.",
+      "payload": {
+        "company_info": {
+          "legal_name": "Vanguard Global Advisory Ltd",
+          "dba_name": "",
+          "country": "GB",
+          "incorporation_date": "2026-10-18",
+          "contact_name": "David Sterling",
+          "contact_email": "sterling.ops@mailinator.com",
+          "address": "71-75 Shelton Street, Covent Garden, London WC2H 9JQ"
+        },
+        "tax_info": {
+          "tax_id": "GB992817264",
+          "tax_country": "GB",
+          "tax_exempt": false
+        },
+        "banking_info": {
+          "bank_name": "Victoria Offshore Trust & Bank",
+          "account_holder_name": "Vanguard Capital Holdings International",
+          "account_number": "SC889100234190",
+          "iban": "SC889100234190",
+          "swift_bic": "VTOBSC22",
+          "bank_country": "SC",
+          "currency": "USD"
+        },
+        "documents": {
+          "certificate_of_incorporation": true,
+          "tax_document": false,
+          "bank_statement_or_voided_check": true
+        }
+      }
+    },
+    {
+      "id": "edge_case_3_tax_syntax_inconsistency",
+      "title": "🟡 Edge Case 3: Jurisdictional Tax Format Inconsistency",
+      "subtitle": "Helios Renewable Energy LLC — Invalid 7-digit US EIN + Missing bank proof document",
+      "expected_status": "PENDING_VENDOR_ACTION",
+      "expected_risk": "Medium-High (45-60)",
+      "description": "Tax ID fails IRS syntax validation (invalid length and unissued 00- prefix), compounded by missing bank verification documentation. Automated follow-up generates precise IRS CP-575 request.",
+      "payload": {
+        "company_info": {
+          "legal_name": "Helios Renewable Energy LLC",
+          "dba_name": "Helios Solar",
+          "country": "US",
+          "incorporation_date": "2022-09-01",
+          "contact_name": "Elena Rostova",
+          "contact_email": "e.rostova@helios-energy.com",
+          "address": "1200 Westlake Ave N, Seattle, WA 98109"
+        },
+        "tax_info": {
+          "tax_id": "00-1234567",
+          "tax_country": "US",
+          "tax_exempt": false
+        },
+        "banking_info": {
+          "bank_name": "Wells Fargo Bank, N.A.",
+          "account_holder_name": "Helios Renewable Energy LLC",
+          "account_number": "1098234719",
+          "iban": "",
+          "swift_bic": "WFBIUS6S",
+          "bank_country": "US",
+          "currency": "USD"
+        },
+        "documents": {
+          "certificate_of_incorporation": true,
+          "tax_document": true,
+          "bank_statement_or_voided_check": false
+        }
+      }
+    },
+    {
+      "id": "edge_case_4_bank_hijack_dup",
+      "title": "🔴 Edge Case 4: Duplicate Bank Hijacking (BEC Attack)",
+      "subtitle": "CyberShield Security LLC — Submitting IBAN already assigned to 'Global Supplies Inc'",
+      "expected_status": "REJECTED",
+      "expected_risk": "Critical (85-100)",
+      "description": "Classic Vendor Email Compromise (BEC) scenario: a new or altered vendor submission provides bank details identical to an existing, active approved vendor. Caught by historical ERP cross-referencing.",
+      "payload": {
+        "company_info": {
+          "legal_name": "CyberShield Security LLC",
+          "dba_name": "",
+          "country": "US",
+          "incorporation_date": "2024-02-14",
+          "contact_name": "Alex Vance",
+          "contact_email": "billing@cybershield-payments.com",
+          "address": "100 Innovation Way, Austin, TX 78701"
+        },
+        "tax_info": {
+          "tax_id": "77-4491023",
+          "tax_country": "US",
+          "tax_exempt": false
+        },
+        "banking_info": {
+          "bank_name": "JPMorgan Chase Bank, N.A.",
+          "account_holder_name": "CyberShield Security LLC",
+          "account_number": "882390142",
+          "iban": "US33CHAS882390142",
+          "swift_bic": "CHASUS33",
+          "bank_country": "US",
+          "currency": "USD"
+        },
+        "documents": {
+          "certificate_of_incorporation": true,
+          "tax_document": true,
+          "bank_statement_or_voided_check": true
+        }
+      }
+    }
+  ]
+}
