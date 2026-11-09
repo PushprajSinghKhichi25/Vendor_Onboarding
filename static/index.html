@@ -588,7 +588,20 @@
       }
     }
 
+        function resetSubmitButton() {
+      const btn = document.getElementById('btnSubmitVerify');
+      if (btn) {
+        btn.disabled = false;
+        const btnIcon = document.getElementById('btnIcon');
+        const btnText = document.getElementById('btnText');
+        if (btnIcon) btnIcon.textContent = '⚡';
+        if (btnText) btnText.textContent = 'Execute Automated Verification';
+      }
+      refreshStatsBadge();
+    }
+
     function selectPreset(presetId) {
+      resetSubmitButton();
       currentActivePresetId = presetId;
       const preset = globalPresets.find(p => p.id === presetId);
       if (!preset) return;
@@ -641,6 +654,7 @@
     }
 
     function resetFormToClean() {
+      resetSubmitButton();
       document.getElementById('vendorForm').reset();
       document.getElementById('scenarioBanner').classList.add('hidden');
       resetStageVisualizer();
@@ -732,6 +746,10 @@
               const eventName = eventMatch[1];
               const eventData = JSON.parse(dataMatch[1]);
               handleStreamEvent(eventName, eventData);
+              if (eventName === 'pipeline_complete') {
+                try { await reader.cancel(); } catch(e) {}
+                break;
+              }
             }
           }
         }
@@ -782,6 +800,7 @@
 
       } else if (event === 'pipeline_complete') {
         renderDecisionCard(data);
+        resetSubmitButton();
       }
     }
 

@@ -189,7 +189,7 @@ class VendorRequestHandler(SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
-            self.send_header("Connection", "keep-alive")
+            self.send_header("Connection", "close")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
 
@@ -253,6 +253,7 @@ class VendorRequestHandler(SimpleHTTPRequestHandler):
 
             result["run_id"] = run_id
             send_event("pipeline_complete", result)
+            self.close_connection = True
             return
 
         self._send_json({"error": "Endpoint not found"}, status=404)
